@@ -6,10 +6,6 @@ A standalone guide for benchmarking oMLX with GLM-5.3-Flash-oQ4e and comparing 2
 
 Open `index.html` in any web browser. No installation, build step, or internet connection is required to read the guide. Source links require internet access.
 
-## Share through GitHub
-
-Upload the contents of this folder to your repository. Keep `index.html` at the root of the folder you publish with GitHub Pages. GitHub stores the files; GitHub Pages serves the rendered page when hosting is enabled for the repository.
-
 ## Files
 
 - `index.html`: complete page, including styling, print controls, and an embedded Markdown download.

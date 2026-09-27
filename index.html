@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A local replication protocol for oMLX and GLM-5.3-Flash-oQ4e: context, concurrency, residency and memory capacity.">
+<title>M5 Ultra · Benchmark replication runbook</title>
+<style>
+:root{color-scheme:light;--ink:#192b36;--muted:#506471;--accent:#07695f;--line:#dbe4e6}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#eef3f2;color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.bar{background:#163832;color:white;padding:22px max(24px,calc((100vw - 1120px)/2));display:flex;align-items:center;justify-content:space-between;gap:20px}.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:700}.tools{display:flex;gap:10px;flex-wrap:wrap}button{border:1px solid #7baba2;background:transparent;color:inherit;padding:9px 14px;border-radius:6px;font:inherit;font-size:13px;cursor:pointer}button:hover{background:#275349}button:focus-visible,a:focus-visible,.table-wrap:focus-visible{outline:3px solid #ca7c21;outline-offset:4px}
+.layout{max-width:1200px;margin:40px auto;display:grid;grid-template-columns:200px minmax(0,1fr);gap:32px;padding:0 24px}nav{position:sticky;top:24px;align-self:start;font-size:13px}nav p{color:var(--muted);font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.12em}nav a{display:block;padding:9px 0;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}nav a:hover{color:var(--accent)}article{background:#fff;padding:40px 42px;border:1px solid var(--line);border-radius:10px;min-width:0;box-shadow:0 8px 30px #203c3507}h1{font-size:36px;line-height:1.15;letter-spacing:-.035em;margin:0 0 20px;max-width:650px}h2{margin:46px 0 16px;padding-top:20px;border-top:2px solid var(--line);font-size:25px;line-height:1.25;scroll-margin-top:24px}h3{margin-top:30px;color:var(--accent);font-size:20px;line-height:1.3}p,ul,ol{margin:14px 0}li{margin:8px 0}a{color:var(--accent);text-underline-offset:3px}strong{font-weight:650}code{font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:#eef3f3;padding:2px 4px;border-radius:3px;overflow-wrap:anywhere}pre{background:#142c34;color:#edf6f7;padding:18px;border-radius:7px;overflow:auto;line-height:1.5}pre code{background:transparent;padding:0;color:inherit;white-space:pre;overflow-wrap:normal;font-size:12px}.table-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--line);border-radius:6px}table{border-collapse:collapse;width:100%;font-size:13px;line-height:1.5}th,td{padding:11px 13px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);min-width:108px}th{background:#e8f1ef;font-weight:650}tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#f8faf9}footer{font-size:12px;color:var(--muted);margin-top:38px;padding-top:16px;border-top:1px solid var(--line)}
+@media(max-width:800px){.layout{display:block;margin:20px auto;padding:0 14px}nav{position:static;display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:20px}nav p{width:100%;margin:0}nav a{padding:4px 0;border:0}article{padding:26px 20px}h1{font-size:30px}.bar{padding:18px;align-items:flex-start;flex-direction:column}}
+@media print{body{background:white;font-size:10pt}.bar,nav{display:none}.layout{display:block;margin:0;padding:0;max-width:none}article{padding:0;border:0;box-shadow:none}h1{font-size:24pt}h2{font-size:17pt;margin-top:24px;break-after:avoid}h3{font-size:13pt;break-after:avoid}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f3f3;color:black;break-inside:avoid}pre code{white-space:pre-wrap;font-size:8pt}.table-wrap{overflow:visible;border:0}table{table-layout:fixed;font-size:7pt}th,td{min-width:0;padding:5px;overflow-wrap:anywhere}tr{break-inside:avoid}a{color:inherit}p{orphans:3;widows:3}}
+</style></head><body>
+<header class="bar"><div class="eyebrow">Local AI / replication protocol 1.0</div><div class="tools"><button id="download">Download Markdown</button><button id="print">Print / Save PDF</button></div></header>
+<div class="layout"><nav aria-label="On this page"><p>On this page</p><a href="#section-1">1. Prepare and record</a><a href="#section-2">2. Set up measurement</a><a href="#section-3">3. Run the sequence</a><a href="#section-4">4. Record and return results</a><a href="#section-5">5. What would make 512GB useful?</a></nav><article><h1>M5 Ultra · 256GB replication runbook</h1>
+<p><strong>oMLX + GLM-5.3-Flash-oQ4e · Protocol 1.0 · 27 September 2026</strong></p>
+<p><strong>Question:</strong> How much context, concurrency, and supporting software can this Mac run comfortably? Repeat on a 512GB machine to test whether extra memory makes the intended workload practical.</p>
+<p>Allow roughly two hours <strong>after setup and downloads</strong>; long prefills may take longer. With 90 minutes, prioritize A → C → F and label the session “abbreviated.” This document defines a protocol; it does not report new measurements.</p>
+<h2 id="section-1">1. Prepare and record</h2>
+<ul>
+<li>Verify the actual chip, GPU core count, and installed memory in System Information. Use AC power, the same power mode, normal ventilation, and a quiet machine. Pause unrelated indexing, downloads, and model servers.</li>
+<li>Install a GLM-5.3-capable oMLX build. Version <strong>0.6.3 explicitly adds support</strong>; match the original tester’s exact build where possible. Use the identical <strong>oQ4e checkpoint</strong>, tokenizer, and revision—not merely a similarly named model. <a href="https://github.com/jundot/omlx/releases/tag/v0.6.3">Release notes</a>.</li>
+<li>For A/B, obtain the matching oMLX source checkout and its working Python environment; <code>scripts/bench.py</code> must import that same build. Follow the project’s <a href="https://github.com/jundot/omlx#install">installation instructions</a>. Confirm native kernels are available; do not change kernels or acceleration settings between machines.</li>
+<li>Download everything before the session. Record SSD type, free space, and cache location. Keep at least <strong>30GB free</strong> throughout; this is a conservative protocol reserve, not a vendor limit.</li>
+<li>For C–F, share an identical request pack: prompt files, complete request JSON, model IDs, settings, expected answers, and SHA-256 hashes. Record tokenizer-reported input lengths <strong>including templates/system messages</strong>. Reserve space for output within the configured context limit; never silently truncate.</li>
+</ul>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table"><table>
+<thead>
+<tr>
+<th>Session manifest</th>
+<th>Fill in before running</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Operator / date / session ID</td>
+<td></td>
+</tr>
+<tr>
+<td>Mac model / chip / CPU &amp; GPU cores / RAM</td>
+<td></td>
+</tr>
+<tr>
+<td>macOS build / power mode / SSD &amp; free space</td>
+<td></td>
+</tr>
+<tr>
+<td>oMLX version + commit / Python / MLX / mlx-lm</td>
+<td></td>
+</tr>
+<tr>
+<td>GLM repository + immutable revision / quantization</td>
+<td></td>
+</tr>
+<tr>
+<td>Model/config/tokenizer checksums or shared manifest</td>
+<td></td>
+</tr>
+<tr>
+<td>Native kernels / acceleration / KV format</td>
+<td></td>
+</tr>
+<tr>
+<td>Context limit / prefill chunk / concurrency limit</td>
+<td></td>
+</tr>
+<tr>
+<td>RAM &amp; SSD cache limits / eviction or pinning policy</td>
+<td></td>
+</tr>
+<tr>
+<td>Prompt-pack hashes / template / reasoning mode / sampling</td>
+<td></td>
+</tr>
+<tr>
+<td>Secondary model, embeddings, reranker, speech &amp; harness versions</td>
+<td></td>
+</tr>
+<tr>
+<td>Idle memory used / pressure / swap used</td>
+<td></td>
+</tr>
+<tr>
+<td>Acceptable TTFT / E2E / minimum per-request decode speed</td>
+<td></td>
+</tr>
+</tbody></table></div>
+<p>Use agreed usability limits before comparing machines. Keep settings identical; document every deviation. Do not infer model residency merely because a service is running.</p>
+<h2 id="section-2">2. Set up measurement</h2>
+<p>Open <strong>Activity Monitor → Memory</strong>. Record idle values, then sample system memory, memory pressure, and swap every five seconds during each row; retain the highest observed values. Screenshots or a screen recording are fine. Record the model/MLX peak separately.</p>
+<p>Replace these three paths with existing locations; run the setup in Terminal:</p>
+<pre><code class="language-sh">OMLX_SRC=&quot;/absolute/path/to/matching/omlx-checkout&quot;
+BENCH_PY=&quot;/absolute/path/to/omlx-environment/bin/python&quot;
+MODEL_DIR=&quot;/absolute/path/to/GLM-5.3-Flash-oQ4e&quot;
+RUN_DIR=&quot;$PWD/m5-results-$(date +%Y%m%d-%H%M%S)&quot;
+mkdir -p &quot;$RUN_DIR&quot;
+sw_vers &gt; &quot;$RUN_DIR/macos.txt&quot;
+sysctl -n hw.memsize &gt; &quot;$RUN_DIR/physical-memory-bytes.txt&quot;
+git -C &quot;$OMLX_SRC&quot; rev-parse HEAD &gt; &quot;$RUN_DIR/omlx-commit.txt&quot;
+&quot;$BENCH_PY&quot; -m pip freeze &gt; &quot;$RUN_DIR/python-packages.txt&quot;
+&quot;$BENCH_PY&quot; &quot;$OMLX_SRC/scripts/bench.py&quot; --help
+</code></pre>
+<p>Optional five-second swap log in a second Terminal; stop it with <strong>Ctrl-C</strong>:</p>
+<pre><code class="language-sh">while true; do
+  date -u &#39;+%Y-%m-%dT%H:%M:%SZ&#39;
+  sysctl vm.swapusage
+  sleep 5
+done | tee swap-samples.txt
+</code></pre>
+<p>Move that log into the session folder afterward. Swap already present at idle is not new test activity: report <strong>start, peak, and increase</strong>.</p>
+<h3>Stop conditions—apply during warmup too</h3>
+<p>These are agreed test boundaries, not claims about hardware damage limits:</p>
+<ul>
+<li><strong>Stop immediately:</strong> red memory pressure, an out-of-memory error, server crash, or an unresponsive desktop.</li>
+<li><strong>Stop escalation:</strong> yellow pressure for 30 seconds; swap rises by 2GiB from that row’s start; or swap rises at every five-second sample for 30 seconds. Also stop if free disk drops below 30GB.</li>
+<li>Cancel a request after <strong>10 minutes without its first token</strong> or <strong>15 minutes total</strong>; record “timeout,” not “failed to fit.” Longer limits require a separately labeled run.</li>
+<li>Cancel the active test, save evidence, and wait for stable green pressure and swap for 60 seconds. Confirm the server actually stopped processing canceled HTTP requests. Do not advance that context/concurrency branch; smaller healthy workloads may continue.</li>
+</ul>
+<h2 id="section-3">3. Run the sequence</h2>
+<p><strong>Token sizes:</strong> 32K = 32,768; 64K = 65,536; 128K = 131,072; <strong>200K = 200,000</strong>; 256K = 262,144. These are input tokens, with output additional.</p>
+<p>For A/B, stop the serving instance that has GLM loaded before starting the standalone benchmark, avoiding two copies. Use one discarded warmup and 128 requested output tokens. Run each row once for screening; repeat the 32K baseline and the largest healthy intended workload twice more. Report all trials and their median; label unrepeated rows <code>n=1</code>.</p>
+<p>Define this helper once. Each invocation writes a separate log:</p>
+<pre><code class="language-sh">bench_row () {
+  local row_id=&quot;$1&quot;
+  shift
+  &quot;$BENCH_PY&quot; -u &quot;$OMLX_SRC/scripts/bench.py&quot; &quot;$MODEL_DIR&quot; \
+    --gen 128 --warmup 1 &quot;$@&quot; 2&gt;&amp;1 | tee &quot;$RUN_DIR/$row_id.txt&quot;
+}
+</code></pre>
+<p>The standalone runner loads its own engine. It accepts numeric prompt lengths and batches at the <strong>smallest supplied length</strong>. Give it one length per invocation. Commands below follow the <a href="https://github.com/jundot/omlx/blob/main/scripts/bench.py">upstream runner</a>; verify flags against the pinned checkout.</p>
+<h3>A · Single-request context curve</h3>
+<p><strong>Run one line at a time; check the stop conditions before the next.</strong></p>
+<pre><code class="language-sh">bench_row A32  --pp 32768
+bench_row A64  --pp 65536
+bench_row A128 --pp 131072
+bench_row A200 --pp 200000
+# Stretch only: enough context capacity for 262144 input + 128 output.
+bench_row A256 --pp 262144
+</code></pre>
+<p>Mark A256 <code>unsupported</code> if the model/runtime limit disallows it. A numeric CLI argument does not establish model support. The conversation’s roughly 35 tok/s and 186.6GB at 32K are prior reported observations, not acceptance targets.</p>
+<h3>B · Concurrent requests</h3>
+<p>Reuse A32/A64/A128 as the single-request reference. Then run each line separately:</p>
+<pre><code class="language-sh">bench_row B32x2  --pp 32768  --batch 2
+bench_row B32x4  --pp 32768  --batch 4
+bench_row B32x8  --pp 32768  --batch 8
+bench_row B64x2  --pp 65536  --batch 2
+bench_row B64x4  --pp 65536  --batch 4
+bench_row B128x2 --pp 131072 --batch 2
+# Only after B128x2 remains healthy:
+bench_row B128x4 --pp 131072 --batch 4
+</code></pre>
+<p>Each invocation also runs a single-request test before the requested batch. Record the batch row separately. A/B are synthetic throughput tests; their generated answers are not accuracy scores.</p>
+<h3>C · Keep the whole stack resident</h3>
+<p>Finish the standalone process, then start the <strong>normal serving configuration</strong>. Load GLM plus the agreed ~27B secondary model, embeddings, reranker, Whisper, and harness/database/index. Run one small request through each model to load weights; verify residency in logs/process memory. Keep supporting services idle during C.</p>
+<p>Using the shared request pack, run <strong>64K ×1 → 128K ×1 → 128K ×2 → 128K ×4</strong>, escalating only while healthy. Use different leading prefixes for simultaneous requests and each cold trial. Check cached-token counts, reload messages, and evictions. Record memory after loading the stack and during each test. If anything unloads, mark “residency failed” even if GLM answers.</p>
+<p>Use the local OpenAI-compatible endpoint. The request pack must contain actual text and the server’s exact model ID; this is the shape of each JSON file:</p>
+<pre><code class="language-json">{
+  &quot;model&quot;: &quot;&lt;exact-server-model-id&gt;&quot;,
+  &quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;&lt;shared-prompt-text&gt;&quot;}],
+  &quot;temperature&quot;: 0,
+  &quot;top_p&quot;: 1,
+  &quot;max_tokens&quot;: 128,
+  &quot;stream&quot;: true
+}
+</code></pre>
+<p>Example single request; adjust the port and add your local authentication header if required:</p>
+<pre><code class="language-sh">curl --fail-with-body -N --max-time 900 \
+  http://127.0.0.1:8000/v1/chat/completions \
+  -H &#39;Content-Type: application/json&#39; \
+  --data-binary @requests/C64-1.json \
+  &gt; &quot;$RUN_DIR/C64-1.sse&quot;
+</code></pre>
+<p>For ×2/×4, use the harness to dispatch all requests together and save <strong>per-request timestamps and token usage</strong>. Record its command/version in the manifest. The curl example saves responses but does <strong>not</strong> measure token TTFT. Leave unavailable metrics <code>N/A</code>; do not substitute HTTP-header timing. Compare C against the same server requests with GLM alone as a paired control, not directly against A/B’s engine timing.</p>
+<h3>D · Cold, warm, and partial-prefix reuse</h3>
+<p>Unload supporting models; keep GLM loaded. Enable the agreed cache configuration. Use normal API requests, with 128-token output caps:</p>
+<ol>
+<li><strong>Cold:</strong> send the shared 128K request with a new leading trial ID. Confirm zero reused tokens.</li>
+<li><strong>Warm:</strong> repeat the exact request immediately; then change only the trailing question and send a third request. Record both TTFTs and reused-token counts.</li>
+<li><strong>Partial:</strong> preserve the first 65,536 input tokens of the cold request and replace its suffix with a shared alternate suffix, maintaining the total input budget. Record actual reuse; block boundaries may reduce it.</li>
+</ol>
+<p>“Cold” means uncached context with a loaded model, not model-load time. A server restart alone need not clear SSD cache. Keep templates/system messages identical. Label RAM versus SSD hits if observable; otherwise “tier unknown.” oMLX documents both <a href="https://github.com/jundot/omlx#tiered-kv-cache-hot--cold">RAM and SSD cache tiers</a>.</p>
+<h3>E · Quality at long context</h3>
+<p>Run the original synthetic evidence pack at <strong>128K</strong>, then <strong>200K or 256K</strong>, choosing the largest healthy size shared by both machines. Use identical prompts, answer keys, and <strong>2,048 output tokens</strong> on both; keep these rows separate from tg128 timing tests. Fix the same reasoning mode.</p>
+<p>Score correct conclusions, correct record-ID citations, preserved alert/resolution history, and invented evidence. Report counts and save full answers. The previous chat referenced <code>m5_ultra_256_vs_512_benchmark_kit.zip</code>, but its contents were unavailable for this runbook. <strong>Obtain that same pack from the organizer or mark E “not run—pack missing.”</strong> Do not silently substitute a different corpus.</p>
+<h3>F · Twenty-minute real-workload check</h3>
+<p>Restore C’s resident stack. Launch these four shared jobs together: <strong>128K evidence investigation; 64K code analysis/change plan; 32K anomaly detection; 32K document classification with citations</strong>. Use 2,048 output tokens per job and the same reasoning settings. Wait for all four to finish before launching the next wave; stop starting waves at 20 minutes. Record completed jobs, timeouts, unfinished work, correctness, per-job latency, pressure, swap, and reloads.</p>
+<p>Keep supporting models resident. If background embedding/speech work is part of the intended deployment, run a second labeled variant with the same files and fixed launch schedule on both machines. Save that schedule. Missing shared jobs mean F is a local demonstration, not a replicated comparison.</p>
+<h2 id="section-4">4. Record and return results</h2>
+<p><strong>Definitions:</strong> TTFT is request submission to first generated token (or first visible content for an API client—label which). PP is prompt-processing tokens/sec; TG is decode tokens/sec; E2E is submission to completion. Include queue time in API latency. For concurrency, retain individual latencies and the slowest request; an average can hide a stalled agent.</p>
+<p>Record native aggregate TG as reported and separately compute <strong>all output tokens ÷ batch wall-clock seconds</strong> as end-to-end output throughput. Never present aggregate TG as one agent’s speed. Record actual input/output counts and early stops.</p>
+<p>The <a href="https://github.com/jundot/omlx/blob/main/omlx/admin/benchmark.py">native implementation</a> distinguishes engine timing and MLX peak memory. The stock CLI prints only a subset: obtain additional fields from local instrumentation or mark <code>N/A</code>. Its <code>mem</code> uses decimal GB and is <strong>not whole-machine RAM</strong>. Normalize bytes to GiB (<code>bytes ÷ 1,073,741,824</code>) or explicitly retain original units. Native A/B prompt generation is intended to avoid prefix-cache hits; flag any cached-token warning.</p>
+<p>Use one row per trial; duplicate this table as needed:</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table"><table>
+<thead>
+<tr>
+<th>Run / trial</th>
+<th>Input × requests / actual output</th>
+<th>Cache / stack</th>
+<th>TTFT mean / max (s)</th>
+<th>PP / TG per request / TG aggregate (tok/s)</th>
+<th>E2E (s)</th>
+<th>MLX peak / system peak (GiB)</th>
+<th>Swap start → peak (GiB) / pressure</th>
+<th>Correct / usable / notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>A32 / 1</td>
+<td>32768 ×1 /</td>
+<td>cold / GLM</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>N/A /</td>
+</tr>
+<tr>
+<td>A64 / 1</td>
+<td>65536 ×1 /</td>
+<td>cold / GLM</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>N/A /</td>
+</tr>
+<tr>
+<td>A128 / 1</td>
+<td>131072 ×1 /</td>
+<td>cold / GLM</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>N/A /</td>
+</tr>
+<tr>
+<td>A200 / 1</td>
+<td>200000 ×1 /</td>
+<td>cold / GLM</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>N/A /</td>
+</tr>
+<tr>
+<td>A256 / 1</td>
+<td>262144 ×1 /</td>
+<td>cold / GLM</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>N/A /</td>
+</tr>
+<tr>
+<td>B__×__ / 1</td>
+<td></td>
+<td>cold / GLM</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>N/A /</td>
+</tr>
+<tr>
+<td>C__×__ / 1</td>
+<td></td>
+<td>cold / full</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>N/A /</td>
+</tr>
+<tr>
+<td>D cold / warm / partial</td>
+<td></td>
+<td>/ GLM</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>E128 / E200 or E256</td>
+<td></td>
+<td>/ GLM</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>F / wave __</td>
+<td>mixed ×4 /</td>
+<td>/ full</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table></div>
+<p>Return the manifest, completed table, raw logs/responses, memory evidence, prompt hashes, and skipped/stopped rows with reasons. Use <code>not run</code>, <code>unsupported</code>, <code>stopped</code>, <code>timeout</code>, or <code>N/A</code> explicitly. Keep results local; share the folder directly with the other tester.</p>
+<h2 id="section-5">5. What would make 512GB useful?</h2>
+<p>Compare identical chip/core configurations where possible. Different GPU cores, bandwidth, macOS, kernels, SSDs, or settings make this a <strong>whole-system comparison</strong>, not an isolated RAM experiment.</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table"><table>
+<thead>
+<tr>
+<th>Observation on matched workloads</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Both remain resident, meet latency limits, and avoid rising swap</td>
+<td>256GB appears sufficient for the tested workload.</td>
+</tr>
+<tr>
+<td>256GB swaps/evicts while 512GB stays resident and responsive</td>
+<td>Extra RAM provides useful capacity for this stack.</td>
+</tr>
+<tr>
+<td>512GB supports longer context or more agents at acceptable latency</td>
+<td>Report the additional usable workload, not just peak tokens/sec.</td>
+</tr>
+<tr>
+<td>Both slow down similarly without memory pressure</td>
+<td>More RAM alone has not demonstrated a speed benefit.</td>
+</tr>
+</tbody></table></div>
+<p>Report four answers: <strong>largest comfortable single context; first pressure boundary; usable concurrent-agent count; whether the complete stack stays resident.</strong> More memory does not inherently improve model accuracy or double decode speed. Without a measured 512GB run, describe its benefit as a hypothesis—do not extrapolate a speedup from the 256GB result.</p>
+<footer>Offline document · No external scripts, fonts, analytics or network dependencies. Commands are a test protocol; this document does not execute benchmarks.</footer></article></div>
+<script>
+const markdown="# M5 Ultra · 256GB replication runbook\n\n**oMLX + GLM-5.3-Flash-oQ4e · Protocol 1.0 · 27 September 2026**\n\n**Question:** How much context, concurrency, and supporting software can this Mac run comfortably? Repeat on a 512GB machine to test whether extra memory makes the intended workload practical.\n\nAllow roughly two hours **after setup and downloads**; long prefills may take longer. With 90 minutes, prioritize A → C → F and label the session “abbreviated.” This document defines a protocol; it does not report new measurements.\n\n## 1. Prepare and record\n\n- Verify the actual chip, GPU core count, and installed memory in System Information. Use AC power, the same power mode, normal ventilation, and a quiet machine. Pause unrelated indexing, downloads, and model servers.\n- Install a GLM-5.3-capable oMLX build. Version **0.6.3 explicitly adds support**; match the original tester’s exact build where possible. Use the identical **oQ4e checkpoint**, tokenizer, and revision—not merely a similarly named model. [Release notes](https://github.com/jundot/omlx/releases/tag/v0.6.3).\n- For A/B, obtain the matching oMLX source checkout and its working Python environment; `scripts/bench.py` must import that same build. Follow the project’s [installation instructions](https://github.com/jundot/omlx#install). Confirm native kernels are available; do not change kernels or acceleration settings between machines.\n- Download everything before the session. Record SSD type, free space, and cache location. Keep at least **30GB free** throughout; this is a conservative protocol reserve, not a vendor limit.\n- For C–F, share an identical request pack: prompt files, complete request JSON, model IDs, settings, expected answers, and SHA-256 hashes. Record tokenizer-reported input lengths **including templates/system messages**. Reserve space for output within the configured context limit; never silently truncate.\n\n| Session manifest | Fill in before running |\n|---|---|\n| Operator / date / session ID | |\n| Mac model / chip / CPU & GPU cores / RAM | |\n| macOS build / power mode / SSD & free space | |\n| oMLX version + commit / Python / MLX / mlx-lm | |\n| GLM repository + immutable revision / quantization | |\n| Model/config/tokenizer checksums or shared manifest | |\n| Native kernels / acceleration / KV format | |\n| Context limit / prefill chunk / concurrency limit | |\n| RAM & SSD cache limits / eviction or pinning policy | |\n| Prompt-pack hashes / template / reasoning mode / sampling | |\n| Secondary model, embeddings, reranker, speech & harness versions | |\n| Idle memory used / pressure / swap used | |\n| Acceptable TTFT / E2E / minimum per-request decode speed | |\n\nUse agreed usability limits before comparing machines. Keep settings identical; document every deviation. Do not infer model residency merely because a service is running.\n\n## 2. Set up measurement\n\nOpen **Activity Monitor → Memory**. Record idle values, then sample system memory, memory pressure, and swap every five seconds during each row; retain the highest observed values. Screenshots or a screen recording are fine. Record the model/MLX peak separately.\n\nReplace these three paths with existing locations; run the setup in Terminal:\n\n```sh\nOMLX_SRC=\"/absolute/path/to/matching/omlx-checkout\"\nBENCH_PY=\"/absolute/path/to/omlx-environment/bin/python\"\nMODEL_DIR=\"/absolute/path/to/GLM-5.3-Flash-oQ4e\"\nRUN_DIR=\"$PWD/m5-results-$(date +%Y%m%d-%H%M%S)\"\nmkdir -p \"$RUN_DIR\"\nsw_vers > \"$RUN_DIR/macos.txt\"\nsysctl -n hw.memsize > \"$RUN_DIR/physical-memory-bytes.txt\"\ngit -C \"$OMLX_SRC\" rev-parse HEAD > \"$RUN_DIR/omlx-commit.txt\"\n\"$BENCH_PY\" -m pip freeze > \"$RUN_DIR/python-packages.txt\"\n\"$BENCH_PY\" \"$OMLX_SRC/scripts/bench.py\" --help\n```\n\nOptional five-second swap log in a second Terminal; stop it with **Ctrl-C**:\n\n```sh\nwhile true; do\n  date -u '+%Y-%m-%dT%H:%M:%SZ'\n  sysctl vm.swapusage\n  sleep 5\ndone | tee swap-samples.txt\n```\n\nMove that log into the session folder afterward. Swap already present at idle is not new test activity: report **start, peak, and increase**.\n\n### Stop conditions—apply during warmup too\n\nThese are agreed test boundaries, not claims about hardware damage limits:\n\n- **Stop immediately:** red memory pressure, an out-of-memory error, server crash, or an unresponsive desktop.\n- **Stop escalation:** yellow pressure for 30 seconds; swap rises by 2GiB from that row’s start; or swap rises at every five-second sample for 30 seconds. Also stop if free disk drops below 30GB.\n- Cancel a request after **10 minutes without its first token** or **15 minutes total**; record “timeout,” not “failed to fit.” Longer limits require a separately labeled run.\n- Cancel the active test, save evidence, and wait for stable green pressure and swap for 60 seconds. Confirm the server actually stopped processing canceled HTTP requests. Do not advance that context/concurrency branch; smaller healthy workloads may continue.\n\n## 3. Run the sequence\n\n**Token sizes:** 32K = 32,768; 64K = 65,536; 128K = 131,072; **200K = 200,000**; 256K = 262,144. These are input tokens, with output additional.\n\nFor A/B, stop the serving instance that has GLM loaded before starting the standalone benchmark, avoiding two copies. Use one discarded warmup and 128 requested output tokens. Run each row once for screening; repeat the 32K baseline and the largest healthy intended workload twice more. Report all trials and their median; label unrepeated rows `n=1`.\n\nDefine this helper once. Each invocation writes a separate log:\n\n```sh\nbench_row () {\n  local row_id=\"$1\"\n  shift\n  \"$BENCH_PY\" -u \"$OMLX_SRC/scripts/bench.py\" \"$MODEL_DIR\" \\\n    --gen 128 --warmup 1 \"$@\" 2>&1 | tee \"$RUN_DIR/$row_id.txt\"\n}\n```\n\nThe standalone runner loads its own engine. It accepts numeric prompt lengths and batches at the **smallest supplied length**. Give it one length per invocation. Commands below follow the [upstream runner](https://github.com/jundot/omlx/blob/main/scripts/bench.py); verify flags against the pinned checkout.\n\n### A · Single-request context curve\n\n**Run one line at a time; check the stop conditions before the next.**\n\n```sh\nbench_row A32  --pp 32768\nbench_row A64  --pp 65536\nbench_row A128 --pp 131072\nbench_row A200 --pp 200000\n# Stretch only: enough context capacity for 262144 input + 128 output.\nbench_row A256 --pp 262144\n```\n\nMark A256 `unsupported` if the model/runtime limit disallows it. A numeric CLI argument does not establish model support. The conversation’s roughly 35 tok/s and 186.6GB at 32K are prior reported observations, not acceptance targets.\n\n### B · Concurrent requests\n\nReuse A32/A64/A128 as the single-request reference. Then run each line separately:\n\n```sh\nbench_row B32x2  --pp 32768  --batch 2\nbench_row B32x4  --pp 32768  --batch 4\nbench_row B32x8  --pp 32768  --batch 8\nbench_row B64x2  --pp 65536  --batch 2\nbench_row B64x4  --pp 65536  --batch 4\nbench_row B128x2 --pp 131072 --batch 2\n# Only after B128x2 remains healthy:\nbench_row B128x4 --pp 131072 --batch 4\n```\n\nEach invocation also runs a single-request test before the requested batch. Record the batch row separately. A/B are synthetic throughput tests; their generated answers are not accuracy scores.\n\n### C · Keep the whole stack resident\n\nFinish the standalone process, then start the **normal serving configuration**. Load GLM plus the agreed ~27B secondary model, embeddings, reranker, Whisper, and harness/database/index. Run one small request through each model to load weights; verify residency in logs/process memory. Keep supporting services idle during C.\n\nUsing the shared request pack, run **64K ×1 → 128K ×1 → 128K ×2 → 128K ×4**, escalating only while healthy. Use different leading prefixes for simultaneous requests and each cold trial. Check cached-token counts, reload messages, and evictions. Record memory after loading the stack and during each test. If anything unloads, mark “residency failed” even if GLM answers.\n\nUse the local OpenAI-compatible endpoint. The request pack must contain actual text and the server’s exact model ID; this is the shape of each JSON file:\n\n```json\n{\n  \"model\": \"\u003cexact-server-model-id>\",\n  \"messages\": [{\"role\": \"user\", \"content\": \"\u003cshared-prompt-text>\"}],\n  \"temperature\": 0,\n  \"top_p\": 1,\n  \"max_tokens\": 128,\n  \"stream\": true\n}\n```\n\nExample single request; adjust the port and add your local authentication header if required:\n\n```sh\ncurl --fail-with-body -N --max-time 900 \\\n  http://127.0.0.1:8000/v1/chat/completions \\\n  -H 'Content-Type: application/json' \\\n  --data-binary @requests/C64-1.json \\\n  > \"$RUN_DIR/C64-1.sse\"\n```\n\nFor ×2/×4, use the harness to dispatch all requests together and save **per-request timestamps and token usage**. Record its command/version in the manifest. The curl example saves responses but does **not** measure token TTFT. Leave unavailable metrics `N/A`; do not substitute HTTP-header timing. Compare C against the same server requests with GLM alone as a paired control, not directly against A/B’s engine timing.\n\n### D · Cold, warm, and partial-prefix reuse\n\nUnload supporting models; keep GLM loaded. Enable the agreed cache configuration. Use normal API requests, with 128-token output caps:\n\n1. **Cold:** send the shared 128K request with a new leading trial ID. Confirm zero reused tokens.\n2. **Warm:** repeat the exact request immediately; then change only the trailing question and send a third request. Record both TTFTs and reused-token counts.\n3. **Partial:** preserve the first 65,536 input tokens of the cold request and replace its suffix with a shared alternate suffix, maintaining the total input budget. Record actual reuse; block boundaries may reduce it.\n\n“Cold” means uncached context with a loaded model, not model-load time. A server restart alone need not clear SSD cache. Keep templates/system messages identical. Label RAM versus SSD hits if observable; otherwise “tier unknown.” oMLX documents both [RAM and SSD cache tiers](https://github.com/jundot/omlx#tiered-kv-cache-hot--cold).\n\n### E · Quality at long context\n\nRun the original synthetic evidence pack at **128K**, then **200K or 256K**, choosing the largest healthy size shared by both machines. Use identical prompts, answer keys, and **2,048 output tokens** on both; keep these rows separate from tg128 timing tests. Fix the same reasoning mode.\n\nScore correct conclusions, correct record-ID citations, preserved alert/resolution history, and invented evidence. Report counts and save full answers. The previous chat referenced `m5_ultra_256_vs_512_benchmark_kit.zip`, but its contents were unavailable for this runbook. **Obtain that same pack from the organizer or mark E “not run—pack missing.”** Do not silently substitute a different corpus.\n\n### F · Twenty-minute real-workload check\n\nRestore C’s resident stack. Launch these four shared jobs together: **128K evidence investigation; 64K code analysis/change plan; 32K anomaly detection; 32K document classification with citations**. Use 2,048 output tokens per job and the same reasoning settings. Wait for all four to finish before launching the next wave; stop starting waves at 20 minutes. Record completed jobs, timeouts, unfinished work, correctness, per-job latency, pressure, swap, and reloads.\n\nKeep supporting models resident. If background embedding/speech work is part of the intended deployment, run a second labeled variant with the same files and fixed launch schedule on both machines. Save that schedule. Missing shared jobs mean F is a local demonstration, not a replicated comparison.\n\n## 4. Record and return results\n\n**Definitions:** TTFT is request submission to first generated token (or first visible content for an API client—label which). PP is prompt-processing tokens/sec; TG is decode tokens/sec; E2E is submission to completion. Include queue time in API latency. For concurrency, retain individual latencies and the slowest request; an average can hide a stalled agent.\n\nRecord native aggregate TG as reported and separately compute **all output tokens ÷ batch wall-clock seconds** as end-to-end output throughput. Never present aggregate TG as one agent’s speed. Record actual input/output counts and early stops.\n\nThe [native implementation](https://github.com/jundot/omlx/blob/main/omlx/admin/benchmark.py) distinguishes engine timing and MLX peak memory. The stock CLI prints only a subset: obtain additional fields from local instrumentation or mark `N/A`. Its `mem` uses decimal GB and is **not whole-machine RAM**. Normalize bytes to GiB (`bytes ÷ 1,073,741,824`) or explicitly retain original units. Native A/B prompt generation is intended to avoid prefix-cache hits; flag any cached-token warning.\n\nUse one row per trial; duplicate this table as needed:\n\n| Run / trial | Input × requests / actual output | Cache / stack | TTFT mean / max (s) | PP / TG per request / TG aggregate (tok/s) | E2E (s) | MLX peak / system peak (GiB) | Swap start → peak (GiB) / pressure | Correct / usable / notes |\n|---|---|---|---|---|---|---|---|---|\n| A32 / 1 | 32768 ×1 / | cold / GLM | | | | | | N/A / |\n| A64 / 1 | 65536 ×1 / | cold / GLM | | | | | | N/A / |\n| A128 / 1 | 131072 ×1 / | cold / GLM | | | | | | N/A / |\n| A200 / 1 | 200000 ×1 / | cold / GLM | | | | | | N/A / |\n| A256 / 1 | 262144 ×1 / | cold / GLM | | | | | | N/A / |\n| B__×__ / 1 | | cold / GLM | | | | | | N/A / |\n| C__×__ / 1 | | cold / full | | | | | | N/A / |\n| D cold / warm / partial | | / GLM | | | | | | |\n| E128 / E200 or E256 | | / GLM | | | | | | |\n| F / wave __ | mixed ×4 / | / full | | | | | | |\n\nReturn the manifest, completed table, raw logs/responses, memory evidence, prompt hashes, and skipped/stopped rows with reasons. Use `not run`, `unsupported`, `stopped`, `timeout`, or `N/A` explicitly. Keep results local; share the folder directly with the other tester.\n\n## 5. What would make 512GB useful?\n\nCompare identical chip/core configurations where possible. Different GPU cores, bandwidth, macOS, kernels, SSDs, or settings make this a **whole-system comparison**, not an isolated RAM experiment.\n\n| Observation on matched workloads | Interpretation |\n|---|---|\n| Both remain resident, meet latency limits, and avoid rising swap | 256GB appears sufficient for the tested workload. |\n| 256GB swaps/evicts while 512GB stays resident and responsive | Extra RAM provides useful capacity for this stack. |\n| 512GB supports longer context or more agents at acceptable latency | Report the additional usable workload, not just peak tokens/sec. |\n| Both slow down similarly without memory pressure | More RAM alone has not demonstrated a speed benefit. |\n\nReport four answers: **largest comfortable single context; first pressure boundary; usable concurrent-agent count; whether the complete stack stays resident.** More memory does not inherently improve model accuracy or double decode speed. Without a measured 512GB run, describe its benefit as a hypothesis—do not extrapolate a speedup from the 256GB result.\n";
+document.getElementById('download').addEventListener('click',()=>{const url=URL.createObjectURL(new Blob([markdown],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='m5-ultra-replication-runbook.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+document.getElementById('print').addEventListener('click',()=>window.print());
+</script></body></html>
